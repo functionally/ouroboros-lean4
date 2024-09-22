@@ -41,7 +41,7 @@
           pkgs.elan
         ];
       };
-      defaultPackage = pkg.modRoot;
+      defaultPackage = peras.modRoot;
     });
 
   nixConfig = {
