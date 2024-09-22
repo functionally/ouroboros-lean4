@@ -11,6 +11,15 @@ structure PartyImpl where
 deriving DecidableEq
 
 
+structure SortitionImpl where
+  isLeader : Slot → PartyImpl → Prop
+  isVoter : Round → PartyImpl → Prop
+
+instance : @IsSortition PartyImpl SortitionImpl where
+  isLeader := SortitionImpl.isLeader
+  isVoter := SortitionImpl.isVoter
+
+
 structure BlockHashImpl where
   val : Option (Nat × Nat)
 deriving Inhabited, DecidableEq
