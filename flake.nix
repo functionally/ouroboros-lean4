@@ -16,18 +16,29 @@
     let
       pkgs = nixpkgs.legacyPackages.${system};
       leanPkgs = lean.packages.${system};
-      pkg = leanPkgs.buildLeanPackage {
+      praos = leanPkgs.buildLeanPackage {
+        name = "Praos";
+        src = ./praos/src;
+      };
+      peras = leanPkgs.buildLeanPackage {
+        name = "Peras";
+        src = ./peras/src;
+      };
+      leios = leanPkgs.buildLeanPackage {
         name = "Leios";
-        src = ./src;
+        src = ./leios/src;
       };
     in {
-      packages = pkg // {
-        inherit (leanPkgs) lean;
-      };
+      packages =
+        praos //
+        peras //
+        leios //
+        { inherit (leanPkgs) lean; }
+      ;
       devShell = pkgs.mkShell {
         buildInputs = [
           pkgs.lean4
-        # pkgs.elan
+          pkgs.elan
         ];
       };
       defaultPackage = pkg.modRoot;
