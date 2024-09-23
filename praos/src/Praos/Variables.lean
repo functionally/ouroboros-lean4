@@ -16,7 +16,7 @@ variable {Party : Type}
 
 
 class IsSortition (Sortition : Type) where
-  isLeader : Slot → Party → Prop
+  isLeader : Sortition → Slot → Party → Prop
 
 variable {Sortition : Type}
 [instSortition : @IsSortition Party Sortition]
@@ -30,19 +30,21 @@ def genesisBlockHash : BlockHash :=
   Inhabited.default
 
 
-class IsBlock (Block : Type) where
-  create (sl : Slot) (pa : Party) : instSortition.isLeader sl pa → BlockHash → Block
+class IsBlock (so : Sortition) (Block : Type) where
+  create (sl : Slot) (pa : Party) : instSortition.isLeader so sl pa → BlockHash → Block
   slot : Block → Slot
   creator : Block → Party
   parent : Block → BlockHash
   hash : Block → BlockHash
-  create_slot : ∀ sl pa bh so, slot (create sl pa so bh) = sl
-  create_creator : ∀ sl pa bh so, creator (create sl pa so bh) = pa
-  create_parent : ∀ sl pa bh so, parent (create sl pa so bh) = bh
+  create_slot : ∀ sl pa h bh, slot (create sl pa h bh) = sl
+  create_creator : ∀ sl pa h bh, creator (create sl pa h bh) = pa
+  create_parent : ∀ sl pa h bh, parent (create sl pa h bh) = bh
   not_genesis_hash : ∀ bl, ¬ hash bl = genesisBlockHash
 
+variable {so : Sortition}
+
 variable {Block : Type}
-[instBlock : @IsBlock Party Sortition instSortition BlockHash instInhabitedBlockHash Block]
+[instBlock : @IsBlock Party Sortition instSortition BlockHash instInhabitedBlockHash so Block]
 
 
 class IsChain (Chain : Type) where
@@ -58,7 +60,7 @@ class IsChain (Chain : Type) where
   extend_expand : ∀ bl ch h, expand (extend bl ch h) (by apply extend_not_genesis) = ⟨bl , ch⟩
 
 variable {Chain : Type}
-[instChain : @IsChain Party Sortition instSortition BlockHash instInhabitedBlockHash Block instBlock Chain]
+[instChain : @IsChain Party Sortition instSortition BlockHash instInhabitedBlockHash so Block instBlock Chain]
 
 
 class IsState (State : Type) where
