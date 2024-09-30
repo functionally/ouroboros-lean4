@@ -31,14 +31,15 @@ def genesisBlockHash : BlockHash :=
 
 
 class IsBlock (so : Sortition) (Block : Type) where
-  create (sl : Slot) (pa : Party) : instSortition.isLeader so sl pa → BlockHash → Block
+  create : Slot → Party → BlockHash → Block
   slot : Block → Slot
   creator : Block → Party
   parent : Block → BlockHash
   hash : Block → BlockHash
-  create_slot : ∀ sl pa h bh, slot (create sl pa h bh) = sl
-  create_creator : ∀ sl pa h bh, creator (create sl pa h bh) = pa
-  create_parent : ∀ sl pa h bh, parent (create sl pa h bh) = bh
+  valid : ∀ bl, instSortition.isLeader so (slot bl) (creator bl)
+  create_slot : ∀ sl pa bh, slot (create sl pa bh) = sl
+  create_creator : ∀ sl pa bh, creator (create sl pa bh) = pa
+  create_parent : ∀ sl pa bh, parent (create sl pa bh) = bh
   not_genesis_hash : ∀ bl, ¬ hash bl = genesisBlockHash
 
 variable {so : Sortition}
@@ -51,13 +52,14 @@ class IsChain (Chain : Type) where
   genesis : Chain
   tipSlot : Chain → Slot
   tipHash : Chain → BlockHash
-  extend (bl : Block) (ch : Chain) : tipSlot ch < instBlock.slot bl ∧ tipHash ch = instBlock.parent bl → Chain
+  extend : Block → Chain → Chain
   expand (ch : Chain) : ¬ ch = genesis → Block × Chain
   eq : DecidableEq Chain
+  valid (bl : Block) (ch : Chain) : tipSlot ch < instBlock.slot bl ∧ tipHash ch = instBlock.parent bl
   genesis_slot : tipSlot genesis = 0
   genesis_hash : tipHash genesis = genesisBlockHash
-  extend_not_genesis : ∀ bl ch h, ¬ extend bl ch h = genesis
-  extend_expand : ∀ bl ch h, expand (extend bl ch h) (by apply extend_not_genesis) = ⟨bl , ch⟩
+  extend_not_genesis : ∀ bl ch, ¬ extend bl ch = genesis
+  extend_expand : ∀ bl ch, expand (extend bl ch) (by apply extend_not_genesis) = ⟨bl , ch⟩
 
 variable {Chain : Type}
 [instChain : @IsChain Party Sortition instSortition BlockHash instInhabitedBlockHash so Block instBlock Chain]
