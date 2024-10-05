@@ -17,8 +17,6 @@ structure SortitionImpl where
 instance instSortitionImpl : @IsSortition PartyImpl SortitionImpl where
   isLeader so sl pa := so.schedule.elem ⟨sl, pa⟩
 
-variable {so : SortitionImpl}
-
 
 structure BlockHashImpl where
   val : Option (Nat × Nat)
@@ -29,23 +27,17 @@ structure BlockImpl where
   slot : Slot
   creator : PartyImpl
   parent : BlockHashImpl
-  valid : instSortitionImpl.isLeader so slot creator
 deriving Repr
 
-private def hashBlock : @BlockImpl so → BlockHashImpl
-| ⟨sl, pa, _, _⟩ => BlockHashImpl.mk $ some ⟨sl, pa.pid⟩
+private def hashBlock : BlockImpl → BlockHashImpl
+| ⟨sl, pa, _⟩ => BlockHashImpl.mk $ some ⟨sl, pa.pid⟩
 
 instance instBlockImpl (so : SortitionImpl) : @IsBlock PartyImpl SortitionImpl instSortitionImpl BlockHashImpl instInhabitedBlockHashImpl so BlockImpl where
-  create sl pa bh :=
-    have h : IsSortition.isLeader so sl pa := by
-      simp [IsSortition.isLeader]
-      sorry
-    BlockImpl.mk sl pa bh h
+  create sl pa _ bh := BlockImpl.mk sl pa bh
   slot := BlockImpl.slot
   creator := BlockImpl.creator
   parent := BlockImpl.parent
   hash := hashBlock
-  valid := BlockImpl.valid
   create_creator := by simp [BlockImpl.mk]
   create_slot := by simp [BlockImpl.mk]
   create_parent := by simp [BlockImpl.mk]
@@ -57,14 +49,13 @@ namespace Example
   def sox := SortitionImpl.mk [⟨1, pax⟩]
   def bhx := BlockHashImpl.mk none
 
-  theorem h : instSortitionImpl.isLeader sox 1 pax := by
+  theorem lex : instSortitionImpl.isLeader sox 1 pax := by
     simp [IsSortition.isLeader, List.elem]
     have _ : (1, pax) == (1, pax) := by rfl
     simp [*]
-  #check h
+  #print lex
 
-  def blx : @BlockImpl sox := (instBlockImpl sox).create 1 pax bhx
-  #eval blx
+  def blx : BlockImpl := (instBlockImpl sox).create 1 pax lex bhx
 
 end Example
 

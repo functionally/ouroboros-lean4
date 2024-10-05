@@ -1,10 +1,13 @@
 import Lake
 open Lake DSL
 
-package «Praos» where
+package «praos» where
 
 lean_lib «Praos» where
   srcDir := "src"
+
+require hoare from
+  "../hoare"
 
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git"

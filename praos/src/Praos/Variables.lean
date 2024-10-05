@@ -31,15 +31,14 @@ def genesisBlockHash : BlockHash :=
 
 
 class IsBlock (so : Sortition) (Block : Type) where
-  create : Slot → Party → BlockHash → Block
+  create (sl : Slot) (pa : Party) : IsSortition.isLeader so sl pa → BlockHash → Block
   slot : Block → Slot
   creator : Block → Party
   parent : Block → BlockHash
   hash : Block → BlockHash
-  valid : ∀ bl, instSortition.isLeader so (slot bl) (creator bl)
-  create_slot : ∀ sl pa bh, slot (create sl pa bh) = sl
-  create_creator : ∀ sl pa bh, creator (create sl pa bh) = pa
-  create_parent : ∀ sl pa bh, parent (create sl pa bh) = bh
+  create_slot : ∀ sl pa le bh, slot (create sl pa le bh) = sl
+  create_creator : ∀ sl pa le bh, creator (create sl pa le bh) = pa
+  create_parent : ∀ sl pa le bh, parent (create sl pa le bh) = bh
   not_genesis_hash : ∀ bl, ¬ hash bl = genesisBlockHash
 
 variable {so : Sortition}
