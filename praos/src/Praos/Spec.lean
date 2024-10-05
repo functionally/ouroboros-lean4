@@ -1,6 +1,8 @@
 
+import Hoare
 import Std.Data.HashMap
 
+open Hoare (HoareM)
 open Std
 
 
@@ -97,9 +99,6 @@ instance : Inhabited Chain where
 
 namespace Chain
 
-  theorem extend_not_genesis : ∀ (bl : @Block Party BlockHash Body) (ch : @Chain Party BlockHash Body), ¬ extend bl ch = genesis := by
-    sorry
-
   def tip : Chain → Block
   | genesis => Block.genesis
   | extend bl _ => bl
@@ -118,27 +117,75 @@ namespace Chain
 end Chain
 
 
-inductive BlockTree where
-| tip : BlockTree
+structure BlockTree where
+  blocks : HashMap BlockHash (Block × Nat)
+
+instance : Inhabited BlockTree where
+  default := {
+    blocks := HashMap.empty.insert genesisBlockHash ⟨Block.genesis, 0⟩
+  }
+
+namespace BlockTree
+
+  def insert (bt : BlockTree) (bl : Block) : BlockTree :=
+    if bt.blocks.contains bl.hash
+      then bt
+      else match bl with
+           | Block.genesis => Inhabited.default
+           | bl'@h₀:(Block.extend _ _ _ _ _) =>
+                    have h : bl' ≠ Block.genesis := by
+                      rw [h₀]
+                      apply Block.noConfusion
+                    let ph := bl'.parent h
+                    let pw := match bt.blocks.find? ph with
+                              | none => 0
+                              | some ⟨_, w⟩ => w
+           {
+             bt with
+               blocks := bt.blocks.insert bl.hash ⟨bl, pw + 1⟩
+           }
+
+  def maxWeight : BlockTree → Nat :=
+    HashMap.fold (fun acc _ ↦ max acc ∘ Prod.snd) 0 ∘ BlockTree.blocks
+
+  def maxTips (bt : BlockTree) : List BlockHash :=
+    let w := maxWeight bt
+    bt.blocks.fold (fun acc _ v ↦ if v.snd = w then v.fst.hash :: acc else acc) []
+
+end BlockTree
 
 
-structure Environment where
+structure Context where
   clock : Slot
-  blockTree : HashMap BlockHash Block
-  mempool : HashMap Tx Bool
+  blockTree : BlockTree
+  mempool : HashMap Tx Unit
 
-namespace Environment
+instance : Inhabited Context where
+  default :=
+    {
+      clock := 0
+    , blockTree := Inhabited.default
+    , mempool := Inhabited.default
+    }
 
-  def tick (e : Environment) : Environment :=
-    e {clock}
+namespace Context
 
-  def receive := sorry
+  def tick (cx : Context) : Context :=
+    {cx with clock := cx.clock + 1}
 
-  def submit := sorry
+  def receive (cx : Context) (bl : Block) : Context :=
+    {cx with blockTree := cx.blockTree.insert bl}
 
-  def query := sorry
+  def submit (cx : Context) (tx : Tx) : Context :=
+    {cx with mempool := cx.mempool.insert tx ()}
 
-end Environment
+  def maxWeight : Context → Nat :=
+    BlockTree.maxWeight ∘ Context.blockTree
+
+  def maxTips : Context → List BlockHash :=
+    BlockTree.maxTips ∘ Context.blockTree
+
+end Context
 
 
 structure Observation where
@@ -152,29 +199,48 @@ class IsNode (Node : Type) where
   tick : Node → Option Block × Node
   receive : Block → Node → Node
   submit : Tx → Node → Node
-  query : Node → Observation
+  observe : Node → Observation
 
 
-def Tick := s → o × s
+inductive Action where
+| Tick : Action
+| Receive : Block → Action
+| Submit : Tx → Action
+deriving Repr, DecidableEq, BEq
 
-def Receive := b × s → Unit × s
 
-def Query := s → z × s
+abbrev State (Node : Type) := Context × Node
 
 
-/-
-class IsState (State : Type) where
-  chainPref : Chain
-  chainPrefs : Set Chain
-  tips : Set Chain
-  chains : Set Chain
--/
+def Ticked (Node : Type) [IsNode Node] : Hoare.Post (State Node) (Option Block)
+| _, _, ⟨cx, no⟩ =>
+    let ob := IsNode.observe no
+    let noClock := ob.clock
+    let cxClock := cx.clock
+    cxClock = noClock
 
--- report tip
--- check out chain
--- public state observable
---
--- white box / set state / observse state
--- black box /
+def ticked (Node : Type) [IsNode Node] : HoareM HoareM.Always (Option Block) (Ticked Node) :=
+  {
+    run := fun ⟨cx, no⟩ ↦
+      let cx' := cx.tick
+      let ⟨out, no'⟩ := IsNode.tick no
+      ⟨out, ⟨Option.elim out cx' cx'.receive, no'⟩⟩
+  , valid := sorry
+  }
+
+#check ticked
+
+instance : Decidable (HoareM.Always ()) where
+
+#check HoareM.Always ()
+
+def z : Hoare.Pre Unit := HoareM.Always
+#check z
+#eval decide z
+
+structure HoareM' {σ : Type} (p : Hoare.Pre σ) (α : Type) (q : Hoare.Post σ α) where
+  run : σ → α × σ
+  valid : ∀ s : σ, match run s with | ⟨x, s'⟩ => decide (p s) → decide (q s x s')
+
 
 end Praos.Spec
