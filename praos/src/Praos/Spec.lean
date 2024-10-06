@@ -203,6 +203,12 @@ inductive Action where
 deriving Repr, DecidableEq, BEq
 
 
+def Output : Action → Type
+| Action.Tick => Option Block
+| Action.Receive _ => Unit
+| Action.Submit _ => Unit
+
+
 abbrev State (Node : Type) := Context × Node
 
 
@@ -245,6 +251,22 @@ def ticked (Node : Type) [IsNode Node] : HoareDec (State Node) (Option Block) :=
       cxClock = noClock
   }
 
+def act (Node : Type) [IsNode Node] (a : Action) : HoareDec (State Node) (Output a) :=
+  match a with
+  | Action.Tick => ticked Node
+  | Action.Receive _ =>
+      {
+        pre := fun _ => true
+      , run := fun st => ⟨(), st⟩
+      , post := fun _ _ _ => true
+      }
+  | Action.Submit _ =>
+      {
+        pre := fun _ => true
+      , run := fun st => ⟨(), st⟩
+      , post := fun _ _ _ => true
+      }
+
 
 structure NodeEx where
   clock : Slot
@@ -261,7 +283,7 @@ instance : IsNode NodeEx where
 def st0 : State NodeEx := ⟨Inhabited.default, IsNode.init⟩
 #eval st0.snd
 
-def ticked' := ticked NodeEx
+def ticked' := act NodeEx Action.Tick
 
 def step1 := ticked'.step st0
 def st1 := step1.state
