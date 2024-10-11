@@ -1,2 +1,3 @@
-import Praos.Impl
-import Praos.Variables
+import Praos.Spec
+import Praos.Spec.Gen
+import Praos.Types
